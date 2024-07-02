@@ -1,6 +1,7 @@
 import { Exclude } from "class-transformer";
+import { GroupConversation } from "src/groups/entities/group-conversation.entity";
 import { Message } from "src/messages/entities/message.entity";
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, JoinColumn, OneToOne, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, JoinColumn, OneToOne, OneToMany, ManyToMany } from "typeorm";
 
 @Entity()
 export class User {
@@ -33,5 +34,8 @@ export class User {
   @OneToMany(() => Message, (message) => message.author)
   @JoinColumn()
   messages: Message[];
+
+  @ManyToMany(() => GroupConversation, (group) => group.users)
+  groups: GroupConversation[];
 
 }

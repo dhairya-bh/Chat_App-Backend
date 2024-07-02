@@ -70,7 +70,6 @@ export class MessagingGateway implements OnGatewayConnection {
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
     console.log('onTypingStart');
-    console.log(data.conversationId);
     client.to(data.conversationId).emit('onTypingStart');
   }
 
@@ -80,7 +79,6 @@ export class MessagingGateway implements OnGatewayConnection {
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
     console.log('onTypingStop');
-    console.log(data.conversationId);
     client.to(data.conversationId).emit('onTypingStop');
   }
 
@@ -105,7 +103,6 @@ export class MessagingGateway implements OnGatewayConnection {
   @OnEvent('conversation.create')
   handleConversationCreateEvent(payload: Conversation) {
     console.log('Inside conversation.create');
-    console.log(payload.recipient);
     const recipientSocket = this.sessions.getUserSocket(payload.recipient.userId);
     if (recipientSocket) recipientSocket.emit('onConversation', payload);
   }
@@ -113,7 +110,6 @@ export class MessagingGateway implements OnGatewayConnection {
   @OnEvent('message.delete')
   async handleMessageDelete(payload) {
     console.log('Inside message.delete');
-    console.log(payload);
     const conversation = await this.conversationService.findConversationById(
       payload.conversationId,
     );
@@ -132,7 +128,6 @@ export class MessagingGateway implements OnGatewayConnection {
       author,
       conversation: { creator, recipient },
     } = message;
-    console.log(message);
     const recipientSocket =
       author.userId === creator.userId
         ? this.sessions.getUserSocket(recipient.userId)
