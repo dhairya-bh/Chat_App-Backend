@@ -67,10 +67,8 @@ export class MessageService implements IMessageService {
       author: { userId: params.userId },
       conversation: { id: params.conversationId },
     });
-    console.log(message);
     if (!message)
       throw new HttpException('Cannot delete message', HttpStatus.BAD_REQUEST);
-    console.log(conversation);
     if (conversation.lastMessageSent.id !== message.id)
       return this.messageRepository.delete({ id: message.id });
 

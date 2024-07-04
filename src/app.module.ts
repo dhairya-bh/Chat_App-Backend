@@ -9,8 +9,9 @@ import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { GroupsModule } from './groups/groups.module';
-
+import { GroupModule } from './groups/groups.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 
 @Module({
   imports: [
@@ -18,6 +19,10 @@ import { GroupsModule } from './groups/groups.module';
     AuthModule,
     UserModule,
     PassportModule.register({ session: true }),
+    ThrottlerModule.forRoot([{
+      ttl: 60,
+      limit: 10,
+    }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -36,9 +41,14 @@ import { GroupsModule } from './groups/groups.module';
     MessagesModule,
     GatewayModule,
     EventEmitterModule.forRoot(),
-    GroupsModule,
+    GroupModule,
   ],
   controllers: [],
-  providers: [],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+  ],
 })
 export class AppModule {}

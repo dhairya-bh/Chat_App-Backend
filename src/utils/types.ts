@@ -1,4 +1,6 @@
 import { Conversation } from 'src/conversations/entities/conversation.entity';
+import { GroupMessage } from 'src/groups/entities/group-message.entity';
+import { Group } from 'src/groups/entities/group.entity';
 import { Message } from 'src/messages/entities/message.entity';
 import { User } from 'src/user/entities/user.entity';
 
@@ -25,6 +27,10 @@ export type ValidateUserDetails = {
 export type FindUserParams = Partial<{
   userId: string;
   email: string;
+}>;
+
+export type FindUserOptions = Partial<{
+  selectAll: boolean;
 }>;
 
 export type CreateConversationParams = {
@@ -62,4 +68,38 @@ export type EditMessageParams = {
   messageId: string;
   userId: string;
   content: string;
+};
+
+export type EditGroupMessageParams = {
+  groupId: string;
+  messageId: string;
+  userId: string;
+  content: string;
+};
+
+export type CreateGroupParams = {
+  creator: User;
+  title?: string;
+  users: string[];
+};
+
+export type FetchGroupsParams = {
+  userId: string;
+};
+
+export type CreateGroupMessageParams = {
+  groupId: string;
+  content: string;
+  author: User;
+};
+
+export type CreateGroupMessageResponse = {
+  message: GroupMessage;
+  group: Group;
+};
+
+export type DeleteGroupMessageParams = {
+  userId: string;
+  groupId: string;
+  messageId: string;
 };
