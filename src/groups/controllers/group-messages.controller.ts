@@ -6,16 +6,22 @@ import {
   Inject,
   Param,
   ParseIntPipe,
-  Patch,
   Post,
+  Patch,
+  UseInterceptors,
+  UploadedFiles,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { SkipThrottle, Throttle } from '@nestjs/throttler';
+import { CreateMessageDto } from '../../messages/dtos/CreateMessage.dto';
+import { EditMessageDto } from '../../messages/dtos/EditMessage.dto';
+import { EmptyMessageException } from '../../messages/exceptions/EmptyMessage';
 import { Routes, Services } from '../../utils/constants';
 import { AuthUser } from '../../utils/decorators';
-import { CreateMessageDto } from 'src/messages/dto/create-message.dto';
-import { User } from 'src/user/entities/user.entity';
-import { IGroupMessageService } from '../interfaces/group-message';
-import { EventEmitter2 } from '@nestjs/event-emitter';
-import { EditMessageDto } from 'src/messages/dto/edit-message.dto';
+import { User } from '../../utils/typeorm';
+import { Attachment } from '../../utils/types';
+import { IGroupMessageService } from '../interfaces/group-messages';
 
 @Controller(Routes.GROUP_MESSAGES)
 export class GroupMessageController {
@@ -25,40 +31,55 @@ export class GroupMessageController {
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
+  @Throttle(5, 10)
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      {
+        name: 'attachments',
+        maxCount: 5,
+      },
+    ]),
+  )
   @Post()
   async createGroupMessage(
     @AuthUser() user: User,
-    @Param('id') id: string,
+    @UploadedFiles() { attachments }: { attachments: Attachment[] },
+    @Param('id', ParseIntPipe) id: number,
     @Body() { content }: CreateMessageDto,
   ) {
-    const response = await this.groupMessageService.createGroupMessage({
-      author: user,
-      groupId: id,
-      content,
-    });
+    console.log(`Creating Group Message for ${id}`);
+    if (!attachments && !content) throw new EmptyMessageException();
+    const params = { groupId: id, author: user, content, attachments };
+    const response = await this.groupMessageService.createGroupMessage(params);
     this.eventEmitter.emit('group.message.create', response);
     return;
   }
 
   @Get()
-  async getGroupMessages(@AuthUser() user: User, @Param('id') id: string) {
+  @SkipThrottle()
+  async getGroupMessages(
+    @AuthUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    console.log(`Fetching GroupMessages for Group Id: ${id}`);
     const messages = await this.groupMessageService.getGroupMessages(id);
     return { id, messages };
   }
 
   @Delete(':messageId')
+  @SkipThrottle()
   async deleteGroupMessage(
     @AuthUser() user: User,
-    @Param('id') groupId: string,
-    @Param('messageId') messageId: string,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('messageId', ParseIntPipe) messageId: number,
   ) {
     await this.groupMessageService.deleteGroupMessage({
-      userId: user.userId,
+      userId: user.id,
       groupId,
       messageId,
     });
     this.eventEmitter.emit('group.message.delete', {
-      userId: user.userId,
+      userId: user.id,
       messageId,
       groupId,
     });
@@ -66,10 +87,11 @@ export class GroupMessageController {
   }
 
   @Patch(':messageId')
+  @SkipThrottle()
   async editGroupMessage(
-    @AuthUser() { userId }: User,
-    @Param('id') groupId: string,
-    @Param('messageId') messageId: string,
+    @AuthUser() { id: userId }: User,
+    @Param('id', ParseIntPipe) groupId: number,
+    @Param('messageId', ParseIntPipe) messageId: number,
     @Body() { content }: EditMessageDto,
   ) {
     const params = { userId, content, groupId, messageId };

@@ -1,28 +1,33 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { join } from 'path';
 import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
 import { ConversationsModule } from './conversations/conversations.module';
 import { MessagesModule } from './messages/messages.module';
 import { GatewayModule } from './gateway/gateway.module';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { GroupModule } from './groups/groups.module';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import entities from './utils/typeorm';
+import { GroupModule } from './groups/group.module';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { FriendRequestsModule } from './friend-requests/friend-requests.module';
+import { FriendsModule } from './friends/friends.module';
+import { EventsModule } from './events/events.module';
+import { ThrottlerBehindProxyGuard } from './utils/throttler';
+import { ExistsModule } from './exists/exists.module';
+import { MessageAttachmentsModule } from './message-attachments/message-attachments.module';
+
+let envFilePath = '.env.development';
+if (process.env.ENVIRONMENT === 'PRODUCTION') envFilePath = '.env.production';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
-    UserModule,
+    UsersModule,
+    ConfigModule.forRoot({ envFilePath }),
     PassportModule.register({ session: true }),
-    ThrottlerModule.forRoot([{
-      ttl: 60,
-      limit: 10,
-    }]),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -32,7 +37,7 @@ import { APP_GUARD } from '@nestjs/core';
         username: configService.getOrThrow('DATABASE_USERNAME'),
         password: configService.getOrThrow('DATABASE_PASSWORD'),
         database: configService.getOrThrow('DATABASE_NAME'),
-        entities: [join(__dirname, '**', '*.entity.{ts,js}')],
+        entities,
         synchronize: true,
       }),
       inject: [ConfigService],
@@ -42,12 +47,21 @@ import { APP_GUARD } from '@nestjs/core';
     GatewayModule,
     EventEmitterModule.forRoot(),
     GroupModule,
+    FriendRequestsModule,
+    FriendsModule,
+    EventsModule,
+    ExistsModule,
+    ThrottlerModule.forRoot({
+      ttl: 10,
+      limit: 10,
+    }),
+    MessageAttachmentsModule,
   ],
   controllers: [],
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: ThrottlerBehindProxyGuard,
     },
   ],
 })

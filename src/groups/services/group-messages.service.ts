@@ -2,16 +2,16 @@ import { HttpException, HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { instanceToPlain } from 'class-transformer';
 import { Repository } from 'typeorm';
+import { IGroupService } from '../interfaces/group';
 import { Services } from '../../utils/constants';
+import { Group, GroupMessage } from '../../utils/typeorm';
 import {
   CreateGroupMessageParams,
   DeleteGroupMessageParams,
   EditGroupMessageParams,
 } from '../../utils/types';
-import { GroupMessage } from 'src/groups/entities/group-message.entity';
-import { IGroupMessageService } from '../interfaces/group-message';
-import { Group } from 'src/groups/entities/group.entity';
-import { IGroupService } from '../interfaces/group';
+import { IGroupMessageService } from '../interfaces/group-messages';
+import { IMessageAttachmentsService } from '../../message-attachments/message-attachments';
 
 @Injectable()
 export class GroupMessageService implements IGroupMessageService {
@@ -22,6 +22,8 @@ export class GroupMessageService implements IGroupMessageService {
     private readonly groupRepository: Repository<Group>,
     @Inject(Services.GROUPS)
     private readonly groupService: IGroupService,
+    @Inject(Services.MESSAGE_ATTACHMENTS)
+    private readonly messageAttachmentsService: IMessageAttachmentsService,
   ) {}
 
   async createGroupMessage({
@@ -32,13 +34,18 @@ export class GroupMessageService implements IGroupMessageService {
     const group = await this.groupService.findGroupById(id);
     if (!group)
       throw new HttpException('No Group Found', HttpStatus.BAD_REQUEST);
-    const findUser = group.users.find((u) => u.userId === author.userId);
+    const findUser = group.users.find((u) => u.id === author.id);
     if (!findUser)
       throw new HttpException('User not in group', HttpStatus.BAD_REQUEST);
     const groupMessage = this.groupMessageRepository.create({
       content,
       group,
       author: instanceToPlain(author),
+      attachments: params.attachments
+        ? await this.messageAttachmentsService.createGroupAttachments(
+            params.attachments,
+          )
+        : [],
     });
     const savedMessage = await this.groupMessageRepository.save(groupMessage);
     group.lastMessageSent = savedMessage;
@@ -46,10 +53,10 @@ export class GroupMessageService implements IGroupMessageService {
     return { message: savedMessage, group: updatedGroup };
   }
 
-  async getGroupMessages(id: string): Promise<GroupMessage[]> {
-    return await this.groupMessageRepository.find({
+  getGroupMessages(id: number): Promise<GroupMessage[]> {
+    return this.groupMessageRepository.find({
       where: { group: { id } },
-      relations: ['author'],
+      relations: ['author', 'attachments', 'author.profile'],
       order: {
         createdAt: 'DESC',
       },
@@ -57,6 +64,7 @@ export class GroupMessageService implements IGroupMessageService {
   }
 
   async deleteGroupMessage(params: DeleteGroupMessageParams) {
+    console.log(params);
     const group = await this.groupRepository
       .createQueryBuilder('group')
       .where('group.id = :groupId', { groupId: params.groupId })
@@ -70,7 +78,7 @@ export class GroupMessageService implements IGroupMessageService {
       throw new HttpException('Group not found', HttpStatus.BAD_REQUEST);
     const message = await this.groupMessageRepository.findOne({
       id: params.messageId,
-      author: { userId: params.userId },
+      author: { id: params.userId },
       group: { id: params.groupId },
     });
 
@@ -104,7 +112,7 @@ export class GroupMessageService implements IGroupMessageService {
     const messageDB = await this.groupMessageRepository.findOne({
       where: {
         id: params.messageId,
-        author: { userId: params.userId },
+        author: { id: params.userId },
       },
       relations: ['group', 'group.creator', 'group.users', 'author'],
     });

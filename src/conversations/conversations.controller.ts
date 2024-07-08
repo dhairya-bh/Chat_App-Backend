@@ -7,14 +7,16 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { SkipThrottle } from '@nestjs/throttler';
 import { AuthenticatedGuard } from '../auth/utils/Guards';
 import { Routes, Services } from '../utils/constants';
 import { AuthUser } from '../utils/decorators';
+import { User } from '../utils/typeorm';
 import { IConversationsService } from './conversations';
-import { User } from 'src/user/entities/user.entity';
-import { CreateConversationDto } from './dto/create-conversation.dto';
-import { EventEmitter2 } from '@nestjs/event-emitter';
+import { CreateConversationDto } from './dtos/CreateConversation.dto';
 
+@SkipThrottle()
 @Controller(Routes.CONVERSATIONS)
 @UseGuards(AuthenticatedGuard)
 export class ConversationsController {
@@ -23,6 +25,10 @@ export class ConversationsController {
     private readonly conversationsService: IConversationsService,
     private readonly events: EventEmitter2,
   ) {}
+  @Get('test/endpoint/check')
+  test() {
+    return;
+  }
 
   @Post()
   async createConversation(
@@ -38,15 +44,12 @@ export class ConversationsController {
   }
 
   @Get()
-  async getConversations(@AuthUser() { userId }: User) {
-    return this.conversationsService.getConversations(userId);
+  async getConversations(@AuthUser() { id }: User) {
+    return this.conversationsService.getConversations(id);
   }
 
   @Get(':id')
-  async getConversationById(@Param('id') id: string) {
-    const conversation =
-      await this.conversationsService.findConversationById(id);
-    console.log(conversation);
-    return conversation;
+  async getConversationById(@Param('id') id: number) {
+    return this.conversationsService.findById(id);
   }
 }

@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Get,
@@ -10,30 +9,31 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
-import { Routes, Services } from 'src/utils/constants';
-import { IAuthService } from './auth';
-import { CreateUserDto } from './dto/create-user.dto';
-import { IUserService } from 'src/user/user';
 import { instanceToPlain } from 'class-transformer';
-import { AuthenticatedGuard, LocalAuthGuard } from './utils/Guards';
 import { Request, Response } from 'express';
+import { IUserService } from '../users/interfaces/user';
+import { Routes, Services } from '../utils/constants';
+import { AuthenticatedRequest } from '../utils/types';
+import { IAuthService } from './auth';
+import { CreateUserDto } from './dtos/CreateUser.dto';
+import { AuthenticatedGuard, LocalAuthGuard } from './utils/Guards';
 
 @Controller(Routes.AUTH)
 export class AuthController {
   constructor(
     @Inject(Services.AUTH) private authService: IAuthService,
-    @Inject(Services.USER) private userService: IUserService,
+    @Inject(Services.USERS) private userService: IUserService,
   ) {}
 
   @Post('register')
-  registerUser(@Body() createUserData: CreateUserDto) {
-    return instanceToPlain(this.userService.createUser(createUserData));
+  async registerUser(@Body() createUserDto: CreateUserDto) {
+    return instanceToPlain(await this.userService.createUser(createUserDto));
   }
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  login(@Res() res:Response) {
-    return res.sendStatus(HttpStatus.OK)
+  login(@Res() res: Response) {
+    return res.sendStatus(HttpStatus.OK);
   }
 
   @Get('status')
@@ -43,5 +43,10 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout() {}
+  @UseGuards(AuthenticatedGuard)
+  logout(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    req.logout((err) => {
+      return err ? res.sendStatus(400) : res.sendStatus(200);
+    });
+  }
 }

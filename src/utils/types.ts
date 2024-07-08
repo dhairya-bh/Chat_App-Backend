@@ -1,32 +1,32 @@
-import { Conversation } from 'src/conversations/entities/conversation.entity';
-import { GroupMessage } from 'src/groups/entities/group-message.entity';
-import { Group } from 'src/groups/entities/group.entity';
-import { Message } from 'src/messages/entities/message.entity';
-import { User } from 'src/user/entities/user.entity';
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
-  }
-}
+import {
+  Conversation,
+  Friend,
+  FriendRequest,
+  Group,
+  GroupMessage,
+  GroupMessageAttachment,
+  Message,
+  MessageAttachment,
+  User,
+} from './typeorm';
+import { Request } from 'express';
 
 export type CreateUserDetails = {
-  email: string;
+  username: string;
+  password: string;
   firstName: string;
   lastName: string;
-  password: string;
 };
 
 export type ValidateUserDetails = {
-  email: string;
+  username: string;
   password: string;
 };
 
 export type FindUserParams = Partial<{
-  userId: string;
+  id: number;
   email: string;
+  username: string;
 }>;
 
 export type FindUserOptions = Partial<{
@@ -34,21 +34,28 @@ export type FindUserOptions = Partial<{
 }>;
 
 export type CreateConversationParams = {
-  email: string;
+  username: string;
   message: string;
 };
 
+export type ConversationIdentityType = 'author' | 'recipient';
+
 export type FindParticipantParams = Partial<{
-  id: string;
+  id: number;
 }>;
 
 export interface AuthenticatedRequest extends Request {
   user: User;
 }
 
+export type CreateParticipantParams = {
+  id: number;
+};
+
 export type CreateMessageParams = {
-  content: string;
-  conversationId: string;
+  id: number;
+  content?: string;
+  attachments?: Attachment[];
   user: User;
 };
 
@@ -58,22 +65,28 @@ export type CreateMessageResponse = {
 };
 
 export type DeleteMessageParams = {
-  userId: string;
-  conversationId: string ;
-  messageId: string;
+  userId: number;
+  conversationId: number;
+  messageId: number;
+};
+
+export type FindMessageParams = {
+  userId: number;
+  conversationId: number;
+  messageId: number;
 };
 
 export type EditMessageParams = {
-  conversationId: string;
-  messageId: string;
-  userId: string;
+  conversationId: number;
+  messageId: number;
+  userId: number;
   content: string;
 };
 
 export type EditGroupMessageParams = {
-  groupId: string;
-  messageId: string;
-  userId: string;
+  groupId: number;
+  messageId: number;
+  userId: number;
   content: string;
 };
 
@@ -84,13 +97,14 @@ export type CreateGroupParams = {
 };
 
 export type FetchGroupsParams = {
-  userId: string;
+  userId: number;
 };
 
 export type CreateGroupMessageParams = {
-  groupId: string;
-  content: string;
   author: User;
+  attachments?: Attachment[];
+  content: string;
+  groupId: number;
 };
 
 export type CreateGroupMessageResponse = {
@@ -99,7 +113,149 @@ export type CreateGroupMessageResponse = {
 };
 
 export type DeleteGroupMessageParams = {
-  userId: string;
-  groupId: string;
-  messageId: string;
+  userId: number;
+  groupId: number;
+  messageId: number;
+};
+
+export type AddGroupRecipientParams = {
+  id: number;
+  username: string;
+  userId: number;
+};
+
+export type RemoveGroupRecipientParams = {
+  id: number;
+  removeUserId: number;
+  issuerId: number;
+};
+
+export type AddGroupUserResponse = {
+  group: Group;
+  user: User;
+};
+
+export type RemoveGroupUserResponse = {
+  group: Group;
+  user: User;
+};
+
+export type AccessParams = {
+  id: number;
+  userId: number;
+};
+
+export type TransferOwnerParams = {
+  userId: number;
+  groupId: number;
+  newOwnerId: number;
+};
+
+export type LeaveGroupParams = {
+  id: number;
+  userId: number;
+};
+
+export type CheckUserGroupParams = {
+  id: number;
+  userId: number;
+};
+
+export type CreateFriendParams = {
+  user: User;
+  username: string;
+};
+
+export type FriendRequestStatus = 'accepted' | 'pending' | 'rejected';
+
+export type FriendRequestParams = {
+  id: number;
+  userId: number;
+};
+
+export type CancelFriendRequestParams = {
+  id: number;
+  userId: number;
+};
+
+export type DeleteFriendRequestParams = {
+  id: number;
+  userId: number;
+};
+
+export type AcceptFriendRequestResponse = {
+  friend: Friend;
+  friendRequest: FriendRequest;
+};
+
+export type RemoveFriendEventPayload = {
+  friend: Friend;
+  userId: number;
+};
+
+export type UserProfileFiles = Partial<{
+  banner: Express.Multer.File[];
+  avatar: Express.Multer.File[];
+}>;
+
+export type UpdateUserProfileParams = Partial<{
+  about: string;
+  banner: Express.Multer.File;
+  avatar: Express.Multer.File;
+}>;
+
+export type ImagePermission = 'public-read' | 'private';
+export type UploadImageParams = {
+  key: string;
+  file: Express.Multer.File;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+export interface Attachment extends Express.Multer.File {}
+
+export type UploadMessageAttachmentParams = {
+  file: Attachment;
+  messageAttachment: MessageAttachment;
+};
+
+export type UploadGroupMessageAttachmentParams = {
+  file: Attachment;
+  messageAttachment: GroupMessageAttachment;
+};
+
+export type GetConversationMessagesParams = {
+  id: number;
+  limit: number;
+};
+
+export type UpdateConversationParams = Partial<{
+  id: number;
+  lastMessageSent: Message;
+}>;
+
+export type UserPresenceStatus = 'online' | 'away' | 'offline' | 'dnd';
+
+export type UpdateStatusMessageParams = {
+  user: User;
+  statusMessage: string;
+};
+
+export type CallHangUpPayload = {
+  receiver: User;
+  caller: User;
+};
+
+export type VoiceCallPayload = {
+  conversationId: number;
+  recipientId: number;
+};
+
+export type CallAcceptedPayload = {
+  caller: User;
+};
+
+export type UpdateGroupDetailsParams = {
+  id: number;
+  title?: string;
+  avatar?: Attachment;
 };

@@ -8,7 +8,7 @@ import * as passport from 'passport';
 import { getRepository } from 'typeorm';
 import { WebsocketAdapter } from './gateway/gateway.adapter';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { Session } from './user/entities/session.entity';
+import { Session } from './utils/typeorm/entities/Session';
 
 async function bootstrap() {
   const { PORT, COOKIE_SECRET } = process.env;
@@ -39,6 +39,9 @@ async function bootstrap() {
   try {
     await app.listen(PORT, () => {
       console.log(`Running on Port ${PORT}`);
+      console.log(
+        `Running in ${process.env.ENVIRONMENT} mode`,
+      );
     });
   } catch (err) {
     console.log(err);
